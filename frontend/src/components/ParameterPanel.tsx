@@ -14,7 +14,6 @@ interface SliderConfig {
   max: number;
   step: number;
   unit: string;
-  a;
   icon: string;
   color: string;
   description: string;
