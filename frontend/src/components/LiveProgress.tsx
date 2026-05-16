@@ -121,6 +121,54 @@ export default function LiveProgress({ event }: Props) {
         <LiveStat label="Gecikmiş" value={delayed} color="#ef4444" icon="⚠️" />
       </div>
 
+      {/* Visual Queue Log */}
+      <div style={{
+        margin: "0 24px 20px",
+        background: "rgba(245, 158, 11, 0.04)",
+        border: "1px dashed rgba(245, 158, 11, 0.2)",
+        borderRadius: 10,
+        padding: "16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 12, color: "#fcd34d", fontWeight: 600, display: "flex", gap: 6, alignItems: "center" }}>
+            <span>🧍</span> Canlı Kuyruk Durumu (Görsel Log)
+          </div>
+          <div style={{ fontSize: 12, color: "#f59e0b", fontWeight: 700, background: "rgba(245,158,11,0.1)", padding: "2px 8px", borderRadius: 12 }}>
+            {queue} Bekleyen
+          </div>
+        </div>
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "4px 2px",
+          minHeight: "28px",
+          alignItems: "center"
+        }}>
+          {queue === 0 ? (
+            <span style={{ fontSize: 12, color: "#64748b", fontStyle: "italic" }}>Şu an kuyruk boş, tüm süreç akıcı ilerliyor.</span>
+          ) : (
+            <>
+              {Array.from({ length: Math.min(queue, 150) }, (_, i) => (
+                <span key={i} style={{ 
+                  fontSize: 16,
+                  display: "inline-block"
+                }} title="Bekleyen Yolcu/Bagaj">
+                  🧍
+                </span>
+              ))}
+              {queue > 150 && (
+                <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: 8, fontWeight: 600 }}>
+                  + {queue - 150} daha...
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Sim time track */}
       <div style={{
         margin: "0 24px 20px",

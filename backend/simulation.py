@@ -27,7 +27,41 @@ GATE_MIN,  GATE_MAX  = 0.10, 0.25   # 6-15 saniye
 DELAY_THRESHOLD      = 8.0          # dk — bu süreden uzun süren bagaj "gecikmeli"
 
 STREAM_STEP  = 10    # her kaç sim-dakikada bir SSE event gönder
-STREAM_DELAY = 0.07  # gerçek saniye — animasyon akıcılığı için
+STREAM_DELAY = 0.2  # gerçek saniye — animasyon akıcılığı için (artırıldı ki görsel log izlenebilsin)
+
+# ── Uçuş kodları ve şehirler (log'larda görünecek) ───────────────────────────
+FLIGHT_CODES = [
+    ("TK-2034", "İstanbul → Londra"),
+    ("TK-1987", "İstanbul → Paris"),
+    ("TK-3021", "İstanbul → Berlin"),
+    ("TK-4455", "İstanbul → New York"),
+    ("TK-1122", "İstanbul → Dubai"),
+    ("TK-7788", "İstanbul → Tokyo"),
+    ("TK-5566", "İstanbul → Roma"),
+    ("TK-9900", "İstanbul → Amsterdam"),
+    ("TK-3344", "İstanbul → Barselona"),
+    ("TK-6677", "İstanbul → Moskova"),
+    ("PC-1201", "İstanbul → Antalya"),
+    ("PC-2302", "İstanbul → İzmir"),
+    ("AJ-4410", "İstanbul → Baku"),
+    ("LH-1830", "İstanbul → Frankfurt"),
+    ("BA-8821", "İstanbul → Manchester"),
+    ("EK-7703", "İstanbul → Abu Dhabi"),
+    ("QR-3390", "İstanbul → Doha"),
+    ("AF-1156", "İstanbul → Lyon"),
+    ("SU-2041", "İstanbul → St.Petersburg"),
+    ("KL-1680", "İstanbul → Eindhoven"),
+]
+
+BAGGAGE_TYPES = ["🧳", "💼", "🎒", "👜", "🛄"]
+PASSENGER_NAMES = [
+    "Ahmet Y.", "Elif K.", "Mehmet T.", "Zeynep S.", "Ali D.",
+    "Fatma Ö.", "Murat B.", "Ayşe C.", "Hasan R.", "Selin A.",
+    "Emre G.", "Deniz K.", "Burak M.", "Canan E.", "Oğuz H.",
+    "Derya P.", "Kaan V.", "Sibel L.", "Tolga F.", "Neslihan İ.",
+    "Yusuf Ç.", "Merve U.", "Serkan N.", "Büşra Ş.", "Onur Z.",
+    "Gizem T.", "Barış A.", "Pınar D.", "Cem K.", "Tuğçe Y.",
+]
 
 
 def _build_env(scanner_count: int, flight_count: int, arrival_rate: float, seed: int = 42):
@@ -52,37 +86,137 @@ def _build_env(scanner_count: int, flight_count: int, arrival_rate: float, seed:
         "scanner_busy_time": 0.0,
     }
 
+    # Log events — her adımda frontend'e gönderilecek
+    log_buffer: list[dict] = []
+
+    bag_counter = [0]  # mutable counter for closures
+
     # ── Bagaj süreci ──────────────────────────────────────────────────────────
     def baggage_process(env, flight_id: int):
         arrival_time = env.now
         stats["total_bags"] += 1
+        bag_counter[0] += 1
+        bag_id = f"BAG-{bag_counter[0]:05d}"
+
+        flight_idx = flight_id % len(FLIGHT_CODES)
+        flight_code, flight_route = FLIGHT_CODES[flight_idx]
+        bag_icon = random.choice(BAGGAGE_TYPES)
+        passenger = random.choice(PASSENGER_NAMES)
+
+        # Log: Bagaj sisteme giriş
+        log_buffer.append({
+            "time": round(env.now, 2),
+            "bag_id": bag_id,
+            "flight": flight_code,
+            "route": flight_route,
+            "passenger": passenger,
+            "icon": bag_icon,
+            "stage": "arrival",
+            "message": f"{passenger} — {bag_icon} {bag_id} sisteme giriş yaptı",
+            "detail": f"Uçuş: {flight_code} ({flight_route})",
+            "status": "info",
+        })
 
         # 1) X-Ray tarayıcı kuyruğu
         queue_enter = env.now
         with scanners.request() as req:
             yield req
-            stats["wait_times"].append(round(env.now - queue_enter, 4))
+            wait_time = round(env.now - queue_enter, 4)
+            stats["wait_times"].append(wait_time)
+
+            # Log: X-Ray tarama başlıyor
+            log_buffer.append({
+                "time": round(env.now, 2),
+                "bag_id": bag_id,
+                "flight": flight_code,
+                "route": flight_route,
+                "passenger": passenger,
+                "icon": "🔍",
+                "stage": "scan",
+                "message": f"{bag_id} X-Ray taramasına alındı",
+                "detail": f"Kuyruk bekleme: {round(wait_time * 60, 1)} sn",
+                "status": "processing",
+            })
+
             scan_time = random.uniform(SCAN_MIN, SCAN_MAX)
             yield env.timeout(scan_time)
             stats["scanner_busy_time"] += scan_time
 
+        # Log: Tarama tamamlandı
+        scan_result = random.choices(
+            ["Temiz — güvenlik onayı verildi", "Temiz — ek kontrol gerektirmez", "Temiz — standart bagaj"],
+            weights=[50, 30, 20]
+        )[0]
+        log_buffer.append({
+            "time": round(env.now, 2),
+            "bag_id": bag_id,
+            "flight": flight_code,
+            "route": flight_route,
+            "passenger": passenger,
+            "icon": "✅",
+            "stage": "scan_done",
+            "message": f"{bag_id} tarama tamamlandı",
+            "detail": scan_result,
+            "status": "success",
+        })
+
         # 2) Sıralama robotu
         with sorting_robot.request() as req:
             yield req
+            log_buffer.append({
+                "time": round(env.now, 2),
+                "bag_id": bag_id,
+                "flight": flight_code,
+                "route": flight_route,
+                "passenger": passenger,
+                "icon": "🤖",
+                "stage": "sorting",
+                "message": f"{bag_id} sıralama bandına yönlendirildi",
+                "detail": f"Hedef kapı: Gate {(flight_id % flight_count) + 1}",
+                "status": "processing",
+            })
             yield env.timeout(random.uniform(SORT_MIN, SORT_MAX))
 
         # 3) Kapı bandı
         gate = gate_belts[flight_id % flight_count]
+        gate_num = (flight_id % flight_count) + 1
         with gate.request() as req:
             yield req
+            log_buffer.append({
+                "time": round(env.now, 2),
+                "bag_id": bag_id,
+                "flight": flight_code,
+                "route": flight_route,
+                "passenger": passenger,
+                "icon": "🛤️",
+                "stage": "gate",
+                "message": f"{bag_id} Gate-{gate_num} bandına yükleniyor",
+                "detail": f"{flight_code} uçuşu için hazırlanıyor",
+                "status": "processing",
+            })
             yield env.timeout(random.uniform(GATE_MIN, GATE_MAX))
 
         total_time = env.now - arrival_time
         stats["total_times"].append(round(total_time, 4))
         stats["processed_bags"] += 1
 
-        if total_time > DELAY_THRESHOLD:
+        is_delayed = total_time > DELAY_THRESHOLD
+        if is_delayed:
             stats["delayed_bags"] += 1
+
+        # Log: Bagaj uçağa yüklendi
+        log_buffer.append({
+            "time": round(env.now, 2),
+            "bag_id": bag_id,
+            "flight": flight_code,
+            "route": flight_route,
+            "passenger": passenger,
+            "icon": "✈️" if not is_delayed else "⚠️",
+            "stage": "loaded",
+            "message": f"{bag_id} {'uçağa yüklendi ✓' if not is_delayed else 'GECİKMELİ — uçağa yüklendi'}",
+            "detail": f"Toplam süre: {round(total_time, 2)} dk | {flight_code}",
+            "status": "success" if not is_delayed else "warning",
+        })
 
     # ── Varış jeneratörü (Poisson süreci) ────────────────────────────────────
     def bag_generator(env):
@@ -94,7 +228,7 @@ def _build_env(scanner_count: int, flight_count: int, arrival_rate: float, seed:
             flight_counter += 1
 
     env.process(bag_generator(env))
-    return env, scanners, stats
+    return env, scanners, stats, log_buffer
 
 
 def _calc_result(stats: dict, scanner_count: int, sim_duration: int, timeline: list) -> dict:
@@ -139,13 +273,14 @@ def run_simulation_stream(
     Her dilimde {"type":"progress", ...} yield eder.
     Sonunda {"type":"complete", "result":{...}} yield eder.
     """
-    env, scanners, stats = _build_env(scanner_count, flight_count, arrival_rate, seed)
+    env, scanners, stats, log_buffer = _build_env(scanner_count, flight_count, arrival_rate, seed)
     timeline: list[dict] = []
 
     steps = list(range(STREAM_STEP, sim_duration + STREAM_STEP, STREAM_STEP))
 
     for i, step_end in enumerate(steps):
         actual_end = min(step_end, sim_duration)
+        log_buffer.clear()  # Clear before running so we only get this step's logs
         env.run(until=actual_end)
 
         # Snapshot
@@ -155,6 +290,9 @@ def run_simulation_stream(
             "queue"    : len(scanners.queue),
             "processed": stats["processed_bags"],
         })
+
+        # Grab latest logs (max 15 per step to keep payloads reasonable)
+        step_logs = log_buffer[-15:] if len(log_buffer) > 15 else list(log_buffer)
 
         yield {
             "type"        : "progress",
@@ -171,6 +309,7 @@ def run_simulation_stream(
             "utilization" : round(
                 min((stats["scanner_busy_time"] / (scanner_count * actual_end)) * 100, 100), 1
             ) if actual_end > 0 else 0.0,
+            "logs"        : step_logs,
         }
 
         time.sleep(STREAM_DELAY)
@@ -190,7 +329,7 @@ def run_simulation(
     sim_duration  : int = 480,
     seed          : int = 42,
 ) -> dict:
-    env, scanners, stats = _build_env(scanner_count, flight_count, arrival_rate, seed)
+    env, scanners, stats, _log_buffer = _build_env(scanner_count, flight_count, arrival_rate, seed)
     env.run(until=sim_duration)
 
     timeline = []
@@ -199,3 +338,4 @@ def run_simulation(
         timeline.append({"time": t, "queue": 0, "processed": 0})
 
     return _calc_result(stats, scanner_count, sim_duration, timeline)
+

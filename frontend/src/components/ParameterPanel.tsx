@@ -116,6 +116,52 @@ export default function ParameterPanel({
         </div>
       </div>
 
+      {/* Hazır Senaryolar */}
+      <div style={{ padding: "20px 24px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>Hazır Senaryolar</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          <button
+            onClick={() => onChange({ arrival_rate: 10, scanner_count: 3, flight_count: 5, sim_duration: 480 })}
+            style={{
+              background: params.arrival_rate === 10 && params.scanner_count === 3 && params.flight_count === 5 ? "rgba(56,189,248,0.15)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${params.arrival_rate === 10 && params.scanner_count === 3 && params.flight_count === 5 ? "rgba(56,189,248,0.4)" : "rgba(255,255,255,0.05)"}`,
+              borderRadius: 10, padding: "10px 4px", color: params.arrival_rate === 10 && params.scanner_count === 3 && params.flight_count === 5 ? "#38bdf8" : "#94a3b8",
+              fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+              boxShadow: params.arrival_rate === 10 && params.scanner_count === 3 && params.flight_count === 5 ? "0 0 10px rgba(56,189,248,0.2)" : "none"
+            }}
+          >
+            <span style={{ fontSize: 18 }}>🌤️</span>
+            Standart
+          </button>
+          <button
+            onClick={() => onChange({ arrival_rate: 23, scanner_count: 5, flight_count: 15, sim_duration: 480 })}
+            style={{
+              background: params.arrival_rate === 23 && params.scanner_count === 5 && params.flight_count === 15 ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${params.arrival_rate === 23 && params.scanner_count === 5 && params.flight_count === 15 ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.05)"}`,
+              borderRadius: 10, padding: "10px 4px", color: params.arrival_rate === 23 && params.scanner_count === 5 && params.flight_count === 15 ? "#fcd34d" : "#94a3b8",
+              fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+              boxShadow: params.arrival_rate === 23 && params.scanner_count === 5 && params.flight_count === 15 ? "0 0 10px rgba(245,158,11,0.2)" : "none"
+            }}
+          >
+            <span style={{ fontSize: 18 }}>☀️</span>
+            Yaz Yoğunluğu
+          </button>
+          <button
+            onClick={() => onChange({ arrival_rate: 5, scanner_count: 2, flight_count: 3, sim_duration: 480 })}
+            style={{
+              background: params.arrival_rate === 5 && params.scanner_count === 2 && params.flight_count === 3 ? "rgba(129,140,248,0.15)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${params.arrival_rate === 5 && params.scanner_count === 2 && params.flight_count === 3 ? "rgba(129,140,248,0.4)" : "rgba(255,255,255,0.05)"}`,
+              borderRadius: 10, padding: "10px 4px", color: params.arrival_rate === 5 && params.scanner_count === 2 && params.flight_count === 3 ? "#a5b4fc" : "#94a3b8",
+              fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+              boxShadow: params.arrival_rate === 5 && params.scanner_count === 2 && params.flight_count === 3 ? "0 0 10px rgba(129,140,248,0.2)" : "none"
+            }}
+          >
+            <span style={{ fontSize: 18 }}>❄️</span>
+            Kış Sakinliği
+          </button>
+        </div>
+      </div>
+
       {/* Sliders */}
       <div
         style={{
